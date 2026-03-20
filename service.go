@@ -40,6 +40,9 @@ func (s *Service) EnsureNotebookPage() error {
 	}
 
 	s.client.tabIndex = tabIndex
+	if err := s.client.activateChrome(); err != nil {
+		return err
+	}
 	currentURL, err := s.client.GetCurrentURL()
 	if err != nil {
 		return err

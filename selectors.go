@@ -28,8 +28,10 @@ const (
 	sourceCheckbox = "mat-checkbox"
 
 	// インフォグラフィック生成
-	infographicButtonAria = "インフォグラフィック"
-	generatingText        = "インフォグラフィックを生成しています"
+	infographicButtonAria      = "インフォグラフィック"
+	infographicCardDescription = "インフォグラフィック"
+	moreButtonDescription      = "もっと見る"
+	generatingText             = "インフォグラフィックを生成しています"
 
 	// ダウンロード
 	downloadMenuText = "ダウンロード"

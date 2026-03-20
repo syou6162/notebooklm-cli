@@ -324,15 +324,15 @@ end tell`, safeURL, safeURL)
 
 // CountInfographicCards はStudioパネルのインフォグラフィックカード数を取得する
 func (c *Client) CountInfographicCards() int {
-	jsCode := `(() => {
-		var buttons = document.querySelectorAll('button');
+	jsCode := fmt.Sprintf(`(() => {
+		var buttons = document.querySelectorAll('button[aria-description]');
 		var count = 0;
 		for (var i = 0; i < buttons.length; i++) {
-			var text = buttons[i].textContent || '';
-			if (text.indexOf('stacked_bar_chart') !== -1) count++;
+			var desc = buttons[i].getAttribute('aria-description') || '';
+			if (desc === '%s') count++;
 		}
 		return '' + count;
-	})()`
+	})()`, infographicCardDescription)
 	result, err := c.executeJS(jsCode, defaultTimeout)
 	if err != nil {
 		return 0
@@ -346,31 +346,31 @@ func (c *Client) CountInfographicCards() int {
 
 // ClickMoreButtonOnFirstInfographicCard は最初のインフォグラフィックカードの「もっと見る」をクリックする
 func (c *Client) ClickMoreButtonOnFirstInfographicCard() error {
-	jsCode := `(() => {
-		var buttons = document.querySelectorAll('button');
-		var infographicMoreButtons = [];
-		for (var i = 0; i < buttons.length; i++) {
-			var aria = buttons[i].getAttribute('aria-label') || '';
-			if (aria === 'もっと見る') {
-				var parent = buttons[i].closest('.artifact-button-content')
-					|| buttons[i].parentElement;
-				var parentText = parent ? (parent.textContent || '').trim() : '';
-				if (parentText.indexOf('stacked_bar_chart') !== -1
-						|| parentText.indexOf('インフォグラフィック') !== -1) {
-					infographicMoreButtons.push(buttons[i]);
+	jsCode := fmt.Sprintf(`(() => {
+		var cards = document.querySelectorAll('button[aria-description]');
+		var card = null;
+		for (var i = 0; i < cards.length; i++) {
+			if (cards[i].getAttribute('aria-description') === '%s') { card = cards[i]; break; }
+		}
+		if (!card) return 'NO_CARD';
+		var ancestor = card.parentElement;
+		for (var d = 0; d < 5 && ancestor; d++) {
+			var buttons = ancestor.querySelectorAll('button[mattooltip]');
+			for (var j = 0; j < buttons.length; j++) {
+				if (buttons[j].getAttribute('mattooltip') === '%s') {
+					buttons[j].click(); return 'CLICKED';
 				}
 			}
+			ancestor = ancestor.parentElement;
 		}
-		if (infographicMoreButtons.length === 0) return 'NOT_FOUND';
-		infographicMoreButtons[0].click();
-		return 'CLICKED';
-	})()`
+		return 'NOT_FOUND';
+	})()`, infographicCardDescription, moreButtonDescription)
 	result, err := c.executeJS(jsCode, defaultTimeout)
 	if err != nil {
 		return err
 	}
 	if result != "CLICKED" {
-		return &BrowserError{Message: "インフォグラフィックの「もっと見る」ボタンが見つかりませんでした"}
+		return &BrowserError{Message: fmt.Sprintf("インフォグラフィックの「もっと見る」ボタンが見つかりませんでした (result=%s)", result)}
 	}
 	return nil
 }
