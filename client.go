@@ -322,6 +322,59 @@ end tell`, safeURL, safeURL)
 	return idx, nil
 }
 
+// CountInfographicCards はStudioパネルのインフォグラフィックカード数を取得する
+func (c *Client) CountInfographicCards() int {
+	jsCode := fmt.Sprintf(`(() => {
+		var buttons = document.querySelectorAll('button[aria-description]');
+		var count = 0;
+		for (var i = 0; i < buttons.length; i++) {
+			var desc = buttons[i].getAttribute('aria-description') || '';
+			if (desc === '%s') count++;
+		}
+		return '' + count;
+	})()`, infographicCardDescription)
+	result, err := c.executeJS(jsCode, defaultTimeout)
+	if err != nil {
+		return 0
+	}
+	var count int
+	if _, err := fmt.Sscanf(result, "%d", &count); err != nil {
+		return 0
+	}
+	return count
+}
+
+// ClickMoreButtonOnFirstInfographicCard は最初のインフォグラフィックカードの「もっと見る」をクリックする
+func (c *Client) ClickMoreButtonOnFirstInfographicCard() error {
+	jsCode := fmt.Sprintf(`(() => {
+		var cards = document.querySelectorAll('button[aria-description]');
+		var card = null;
+		for (var i = 0; i < cards.length; i++) {
+			if (cards[i].getAttribute('aria-description') === '%s') { card = cards[i]; break; }
+		}
+		if (!card) return 'NO_CARD';
+		var ancestor = card.parentElement;
+		for (var d = 0; d < 5 && ancestor; d++) {
+			var buttons = ancestor.querySelectorAll('button[mattooltip]');
+			for (var j = 0; j < buttons.length; j++) {
+				if (buttons[j].getAttribute('mattooltip') === '%s') {
+					buttons[j].click(); return 'CLICKED';
+				}
+			}
+			ancestor = ancestor.parentElement;
+		}
+		return 'NOT_FOUND';
+	})()`, infographicCardDescription, moreButtonDescription)
+	result, err := c.executeJS(jsCode, defaultTimeout)
+	if err != nil {
+		return err
+	}
+	if result != "CLICKED" {
+		return &BrowserError{Message: fmt.Sprintf("インフォグラフィックの「もっと見る」ボタンが見つかりませんでした (result=%s)", result)}
+	}
+	return nil
+}
+
 // CloseSourceViewerIfOpen はソースビューアが開いている場合に閉じる（冪等）
 func (c *Client) CloseSourceViewerIfOpen() {
 	jsCode := fmt.Sprintf(`(() => {
