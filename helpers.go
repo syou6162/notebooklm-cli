@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -69,29 +68,9 @@ func MoveToOutput(src, outputDir, name string) (string, error) {
 	}
 	dest := filepath.Join(outputDir, destName)
 
-	// まずos.Renameを試みる（同一デバイスなら高速）
-	if err := os.Rename(src, dest); err == nil {
-		return dest, nil
-	}
-
-	// クロスデバイスの場合はコピー+削除
-	srcFile, err := os.Open(src)
-	if err != nil {
+	if err := os.Rename(src, dest); err != nil {
 		return "", err
 	}
-	defer func() { _ = srcFile.Close() }()
-
-	destFile, err := os.Create(dest)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = destFile.Close() }()
-
-	if _, err := io.Copy(destFile, srcFile); err != nil {
-		return "", err
-	}
-
-	_ = os.Remove(src)
 
 	return dest, nil
 }
