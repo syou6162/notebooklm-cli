@@ -12,7 +12,7 @@ func TestResolveSource_Found(t *testing.T) {
 	text := "test input text"
 	hash := ComputeSHA256(text)
 	notebookURL := "https://notebooklm.google.com/notebook/abc-123"
-	if err := store.SaveMapping(hash, notebookURL); err != nil {
+	if err := store.SaveMapping(hash, notebookURL, text); err != nil {
 		t.Fatalf("SaveMapping() error = %v", err)
 	}
 
