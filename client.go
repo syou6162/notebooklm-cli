@@ -389,3 +389,34 @@ func (c *Client) CloseSourceViewerIfOpen() {
 	})()`, sourceViewerCloseTooltip)
 	_, _ = c.executeJS(jsCode, defaultTimeout)
 }
+
+// ListSourceNames はソースパネルからソース名一覧を取得する
+func (c *Client) ListSourceNames() ([]string, error) {
+	jsCode := fmt.Sprintf(`(() => {
+		var checkboxes = document.querySelectorAll('mat-checkbox');
+		var names = [];
+		for (var i = 0; i < checkboxes.length; i++) {
+			var input = checkboxes[i].querySelector('input');
+			if (!input) continue;
+			var label = input.getAttribute('aria-label') || '';
+			if (label && label !== '%s') {
+				names.push(label);
+			}
+		}
+		return names.join('\\n');
+	})()`, selectAllSourcesLabel)
+	result, err := c.executeJS(jsCode, defaultTimeout)
+	if err != nil {
+		return nil, err
+	}
+	if result == "" {
+		return nil, nil
+	}
+	var names []string
+	for _, name := range strings.Split(result, "\n") {
+		if name != "" {
+			names = append(names, name)
+		}
+	}
+	return names, nil
+}

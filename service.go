@@ -165,6 +165,14 @@ func (s *Service) DeleteSource() error {
 	return s.mapping.DeleteByURL(s.notebookURL)
 }
 
+// ListSources はノートブック内のソース名一覧を返す
+func (s *Service) ListSources() ([]string, error) {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return nil, err
+	}
+	return s.client.ListSourceNames()
+}
+
 // DeleteAllInfographics は既存のインフォグラフィックをすべて削除する
 func (s *Service) DeleteAllInfographics() error {
 	for range maxDeleteAttempts {
