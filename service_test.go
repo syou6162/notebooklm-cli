@@ -89,6 +89,9 @@ func TestAddSource_SkipsWhenMappingExists(t *testing.T) {
 	if len(browser.clickedButtons) > 0 {
 		t.Error("expected no browser interaction when mapping exists")
 	}
+	if gen.called {
+		t.Error("expected metadata generator not to be called when mapping exists")
+	}
 }
 
 func TestAddSource_CreatesNotebookWhenURLEmpty(t *testing.T) {

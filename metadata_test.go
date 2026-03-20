@@ -10,9 +10,11 @@ type mockMetadataGenerator struct {
 	title       string
 	description string
 	err         error
+	called      bool
 }
 
 func (m *mockMetadataGenerator) Generate(text string) (*Metadata, error) {
+	m.called = true
 	if m.err != nil {
 		return nil, m.err
 	}
