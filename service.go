@@ -167,7 +167,7 @@ func (s *Service) AddSource(text string) error {
 	}
 
 	hash := ComputeSHA256(text)
-	if _, found := s.mapping.LookupNotebook(hash); found {
+	if _, found := s.mapping.LookupEntry(hash); found {
 		fmt.Println("同一入力のノートブックが既に存在します。スキップします。")
 		return nil
 	}
@@ -193,7 +193,7 @@ func (s *Service) AddSource(text string) error {
 		return err
 	}
 
-	if err := s.mapping.SaveMapping(hash, currentURL); err != nil {
+	if err := s.mapping.SaveMapping(hash, currentURL, text); err != nil {
 		return fmt.Errorf("マッピングの保存に失敗しました: %w", err)
 	}
 

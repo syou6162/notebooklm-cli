@@ -73,7 +73,7 @@ func TestAddSource_SkipsWhenMappingExists(t *testing.T) {
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
 	text := "existing input"
 	hash := ComputeSHA256(text)
-	if err := store.SaveMapping(hash, "https://notebooklm.google.com/notebook/existing"); err != nil {
+	if err := store.SaveMapping(hash, "https://notebooklm.google.com/notebook/existing", text); err != nil {
 		t.Fatal(err)
 	}
 
@@ -120,12 +120,12 @@ func TestAddSource_CreatesNotebookWhenURLEmpty(t *testing.T) {
 
 	// マッピングが保存されたか
 	hash := ComputeSHA256("new input text")
-	url, found := store.LookupNotebook(hash)
+	entry, found := store.LookupEntry(hash)
 	if !found {
 		t.Error("expected mapping to be saved")
 	}
-	if url != "https://notebooklm.google.com/notebook/new-123" {
-		t.Errorf("mapping URL = %q, want notebook URL", url)
+	if entry.URL != "https://notebooklm.google.com/notebook/new-123" {
+		t.Errorf("entry.URL = %q, want notebook URL", entry.URL)
 	}
 }
 
@@ -196,7 +196,7 @@ func TestDeleteSource_DeletesMappingToo(t *testing.T) {
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
 	notebookURL := "https://notebooklm.google.com/notebook/to-delete"
 	hash := ComputeSHA256("delete me")
-	if err := store.SaveMapping(hash, notebookURL); err != nil {
+	if err := store.SaveMapping(hash, notebookURL, "delete me"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -213,7 +213,7 @@ func TestDeleteSource_DeletesMappingToo(t *testing.T) {
 		t.Fatalf("DeleteSource() error = %v", err)
 	}
 
-	_, found := store.LookupNotebook(hash)
+	_, found := store.LookupEntry(hash)
 	if found {
 		t.Error("expected mapping to be deleted after DeleteSource")
 	}

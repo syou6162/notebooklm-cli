@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"time"
+	"unicode/utf8"
 
 	"gopkg.in/yaml.v3"
 )
@@ -15,7 +18,20 @@ func ComputeSHA256(text string) string {
 	return fmt.Sprintf("%x", h)
 }
 
-// MappingStore はSHA256→ノートブックURLのマッピングを管理する
+// MappingEntry はノートブックのメタデータ
+type MappingEntry struct {
+	URL         string            `yaml:"url"`
+	Title       string            `yaml:"title,omitempty"`
+	Description string            `yaml:"description,omitempty"`
+	Downloads   map[string]string `yaml:"downloads,omitempty"`
+}
+
+// MappingData はマッピングファイルのトップレベル構造
+type MappingData struct {
+	Entries map[string]*MappingEntry `yaml:"entries"`
+}
+
+// MappingStore はSHA256→ノートブックメタデータのマッピングを管理する
 type MappingStore struct {
 	path string
 }
@@ -25,48 +41,74 @@ func NewMappingStore(path string) *MappingStore {
 	return &MappingStore{path: path}
 }
 
-// LookupNotebook はハッシュに対応するノートブックURLを返す
-func (m *MappingStore) LookupNotebook(hash string) (string, bool) {
+// LookupEntry はハッシュに対応するエントリを返す
+func (m *MappingStore) LookupEntry(hash string) (*MappingEntry, bool) {
 	data, err := m.load()
 	if err != nil {
-		return "", false
+		return nil, false
 	}
-	url, ok := data[hash]
-	return url, ok
+	entry, ok := data.Entries[hash]
+	return entry, ok
 }
 
-// SaveMapping はハッシュとノートブックURLの対応を保存する
-func (m *MappingStore) SaveMapping(hash, notebookURL string) error {
+// SaveEntry はハッシュとエントリの対応を保存する
+func (m *MappingStore) SaveEntry(hash string, entry *MappingEntry) error {
 	data, err := m.load()
 	if err != nil {
-		data = make(map[string]string)
+		data = &MappingData{Entries: make(map[string]*MappingEntry)}
 	}
-	data[hash] = notebookURL
+	data.Entries[hash] = entry
 
-	if err := os.MkdirAll(filepath.Dir(m.path), 0755); err != nil {
-		return err
+	return m.save(data)
+}
+
+// SaveMapping はハッシュとノートブックURLの対応を保存する（タイトルは決め打ちで自動生成）
+func (m *MappingStore) SaveMapping(hash, notebookURL, inputText string) error {
+	title := GenerateDefaultTitle(inputText)
+	entry := &MappingEntry{
+		URL:   notebookURL,
+		Title: title,
 	}
+	return m.SaveEntry(hash, entry)
+}
 
-	out, err := yaml.Marshal(data)
+// UpdateDownload はダウンロード済みファイルパスを記録する
+func (m *MappingStore) UpdateDownload(hash, downloadType, filePath string) error {
+	data, err := m.load()
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(m.path, out, 0644)
+	entry, ok := data.Entries[hash]
+	if !ok {
+		return fmt.Errorf("マッピングが見つかりません: hash=%s", hash[:12])
+	}
+	if entry.Downloads == nil {
+		entry.Downloads = make(map[string]string)
+	}
+	entry.Downloads[downloadType] = filePath
+	return m.save(data)
 }
 
 // DeleteByURL はノートブックURLに一致するマッピングを削除する
 func (m *MappingStore) DeleteByURL(notebookURL string) error {
 	data, err := m.load()
 	if err != nil {
-		return nil // ファイルが存在しない場合は何もしない
+		return nil
 	}
 
-	for hash, url := range data {
-		if url == notebookURL {
-			delete(data, hash)
+	for hash, entry := range data.Entries {
+		if entry.URL == notebookURL {
+			delete(data.Entries, hash)
 		}
 	}
 
+	return m.save(data)
+}
+
+func (m *MappingStore) save(data *MappingData) error {
+	if err := os.MkdirAll(filepath.Dir(m.path), 0755); err != nil {
+		return err
+	}
 	out, err := yaml.Marshal(data)
 	if err != nil {
 		return err
@@ -74,14 +116,36 @@ func (m *MappingStore) DeleteByURL(notebookURL string) error {
 	return os.WriteFile(m.path, out, 0644)
 }
 
-func (m *MappingStore) load() (map[string]string, error) {
+func (m *MappingStore) load() (*MappingData, error) {
 	raw, err := os.ReadFile(m.path)
 	if err != nil {
 		return nil, err
 	}
-	var data map[string]string
+	var data MappingData
 	if err := yaml.Unmarshal(raw, &data); err != nil {
 		return nil, err
 	}
-	return data, nil
+	if data.Entries == nil {
+		data.Entries = make(map[string]*MappingEntry)
+	}
+	return &data, nil
+}
+
+// GenerateDefaultTitle は入力テキスト先頭30文字+タイムスタンプで決め打ちタイトルを生成する
+func GenerateDefaultTitle(text string) string {
+	text = strings.TrimSpace(text)
+	text = strings.ReplaceAll(text, "\n", " ")
+	text = strings.ReplaceAll(text, "/", "_")
+
+	maxRunes := 30
+	if utf8.RuneCountInString(text) > maxRunes {
+		runes := []rune(text)
+		text = string(runes[:maxRunes])
+	}
+
+	timestamp := time.Now().Format("20060102")
+	if text == "" {
+		return timestamp
+	}
+	return text + "_" + timestamp
 }
