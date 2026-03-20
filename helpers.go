@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
@@ -47,27 +46,29 @@ func FindDownloadedInfographic(downloadsDir string, startTime time.Time, minSize
 	return candidates[len(candidates)-1].path, nil
 }
 
-// CopyToOutput はファイルを出力ディレクトリにコピーする
-func CopyToOutput(src, outputDir string) (string, error) {
+// MoveToOutput はファイルを出力ディレクトリにリネームして移動する
+// nameが空の場合は元のファイル名を使う。拡張子は元ファイルから引き継ぐ。
+func MoveToOutput(src, outputDir, name string) (string, error) {
+	absDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		return "", err
+	}
+	outputDir = absDir
+
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return "", err
 	}
 
-	dest := filepath.Join(outputDir, filepath.Base(src))
-
-	srcFile, err := os.Open(src)
-	if err != nil {
-		return "", err
+	ext := filepath.Ext(src)
+	var destName string
+	if name != "" {
+		destName = name + ext
+	} else {
+		destName = filepath.Base(src)
 	}
-	defer func() { _ = srcFile.Close() }()
+	dest := filepath.Join(outputDir, destName)
 
-	destFile, err := os.Create(dest)
-	if err != nil {
-		return "", err
-	}
-	defer func() { _ = destFile.Close() }()
-
-	if _, err := io.Copy(destFile, srcFile); err != nil {
+	if err := os.Rename(src, dest); err != nil {
 		return "", err
 	}
 

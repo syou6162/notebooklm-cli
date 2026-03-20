@@ -51,6 +51,20 @@ func (m *MappingStore) LookupEntry(hash string) (*MappingEntry, bool) {
 	return entry, ok
 }
 
+// LookupByURL はノートブックURLに一致するエントリとハッシュを返す
+func (m *MappingStore) LookupByURL(url string) (*MappingEntry, string, bool) {
+	data, err := m.load()
+	if err != nil {
+		return nil, "", false
+	}
+	for hash, entry := range data.Entries {
+		if entry.URL == url {
+			return entry, hash, true
+		}
+	}
+	return nil, "", false
+}
+
 // SaveEntry はハッシュとエントリの対応を保存する
 func (m *MappingStore) SaveEntry(hash string, entry *MappingEntry) error {
 	data, err := m.load()

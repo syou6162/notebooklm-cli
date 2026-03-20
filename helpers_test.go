@@ -88,7 +88,7 @@ func TestFindDownloadedInfographic_ReturnsLatest(t *testing.T) {
 	}
 }
 
-func TestCopyToOutput_CopiesToDirectory(t *testing.T) {
+func TestMoveToOutput_MovesWithRename(t *testing.T) {
 	tmpDir := t.TempDir()
 	src := filepath.Join(tmpDir, "unnamed.png")
 	data := []byte("PNG data")
@@ -97,9 +97,13 @@ func TestCopyToOutput_CopiesToDirectory(t *testing.T) {
 	}
 
 	outputDir := filepath.Join(tmpDir, "output")
-	dest, err := CopyToOutput(src, outputDir)
+	dest, err := MoveToOutput(src, outputDir, "テストタイトル")
 	if err != nil {
-		t.Fatalf("CopyToOutput() error = %v", err)
+		t.Fatalf("MoveToOutput() error = %v", err)
+	}
+
+	if filepath.Base(dest) != "テストタイトル.png" {
+		t.Errorf("filename = %q, want テストタイトル.png", filepath.Base(dest))
 	}
 
 	got, err := os.ReadFile(dest)
@@ -109,9 +113,31 @@ func TestCopyToOutput_CopiesToDirectory(t *testing.T) {
 	if string(got) != string(data) {
 		t.Errorf("file content mismatch")
 	}
+
+	if _, err := os.Stat(src); !os.IsNotExist(err) {
+		t.Error("expected source file to be removed after move")
+	}
 }
 
-func TestCopyToOutput_CreatesDirectory(t *testing.T) {
+func TestMoveToOutput_EmptyNameUsesOriginal(t *testing.T) {
+	tmpDir := t.TempDir()
+	src := filepath.Join(tmpDir, "unnamed.png")
+	if err := os.WriteFile(src, []byte("PNG"), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	outputDir := filepath.Join(tmpDir, "output")
+	dest, err := MoveToOutput(src, outputDir, "")
+	if err != nil {
+		t.Fatalf("MoveToOutput() error = %v", err)
+	}
+
+	if filepath.Base(dest) != "unnamed.png" {
+		t.Errorf("filename = %q, want unnamed.png", filepath.Base(dest))
+	}
+}
+
+func TestMoveToOutput_CreatesDirectory(t *testing.T) {
 	tmpDir := t.TempDir()
 	src := filepath.Join(tmpDir, "unnamed.png")
 	if err := os.WriteFile(src, []byte("PNG"), 0644); err != nil {
@@ -119,9 +145,9 @@ func TestCopyToOutput_CreatesDirectory(t *testing.T) {
 	}
 
 	outputDir := filepath.Join(tmpDir, "new", "subdir")
-	_, err := CopyToOutput(src, outputDir)
+	_, err := MoveToOutput(src, outputDir, "test")
 	if err != nil {
-		t.Fatalf("CopyToOutput() error = %v", err)
+		t.Fatalf("MoveToOutput() error = %v", err)
 	}
 
 	if _, err := os.Stat(outputDir); os.IsNotExist(err) {
