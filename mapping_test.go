@@ -29,16 +29,16 @@ func TestComputeSHA256_SameInput(t *testing.T) {
 	}
 }
 
-func TestMappingStore_LookupNotebook_Empty(t *testing.T) {
+func TestMappingStore_LookupEntry_Empty(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
 
-	url, found := store.LookupNotebook("nonexistent-hash")
+	entry, found := store.LookupEntry("nonexistent-hash")
 	if found {
 		t.Error("expected not found for empty store")
 	}
-	if url != "" {
-		t.Errorf("expected empty url, got %q", url)
+	if entry != nil {
+		t.Errorf("expected nil entry, got %v", entry)
 	}
 }
 
@@ -49,16 +49,19 @@ func TestMappingStore_SaveAndLookup(t *testing.T) {
 	hash := ComputeSHA256("test input")
 	notebookURL := "https://notebooklm.google.com/notebook/abc-123"
 
-	if err := store.SaveMapping(hash, notebookURL); err != nil {
+	if err := store.SaveMapping(hash, notebookURL, "test input"); err != nil {
 		t.Fatalf("SaveMapping() error = %v", err)
 	}
 
-	url, found := store.LookupNotebook(hash)
+	entry, found := store.LookupEntry(hash)
 	if !found {
 		t.Error("expected found after save")
 	}
-	if url != notebookURL {
-		t.Errorf("LookupNotebook() = %q, want %q", url, notebookURL)
+	if entry.URL != notebookURL {
+		t.Errorf("entry.URL = %q, want %q", entry.URL, notebookURL)
+	}
+	if entry.Title == "" {
+		t.Error("expected non-empty title")
 	}
 }
 
@@ -69,18 +72,17 @@ func TestMappingStore_PersistsToFile(t *testing.T) {
 	store1 := NewMappingStore(path)
 	hash := ComputeSHA256("persist test")
 	notebookURL := "https://notebooklm.google.com/notebook/def-456"
-	if err := store1.SaveMapping(hash, notebookURL); err != nil {
+	if err := store1.SaveMapping(hash, notebookURL, "persist test"); err != nil {
 		t.Fatalf("SaveMapping() error = %v", err)
 	}
 
-	// 新しいインスタンスでファイルから読み込み
 	store2 := NewMappingStore(path)
-	url, found := store2.LookupNotebook(hash)
+	entry, found := store2.LookupEntry(hash)
 	if !found {
 		t.Error("expected found after reload from file")
 	}
-	if url != notebookURL {
-		t.Errorf("LookupNotebook() after reload = %q, want %q", url, notebookURL)
+	if entry.URL != notebookURL {
+		t.Errorf("entry.URL after reload = %q, want %q", entry.URL, notebookURL)
 	}
 }
 
@@ -88,25 +90,30 @@ func TestMappingStore_MultipleEntries(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
 
-	entries := map[string]string{
-		ComputeSHA256("input 1"): "https://notebooklm.google.com/notebook/aaa",
-		ComputeSHA256("input 2"): "https://notebooklm.google.com/notebook/bbb",
-		ComputeSHA256("input 3"): "https://notebooklm.google.com/notebook/ccc",
+	inputs := []struct {
+		text string
+		url  string
+	}{
+		{"input 1", "https://notebooklm.google.com/notebook/aaa"},
+		{"input 2", "https://notebooklm.google.com/notebook/bbb"},
+		{"input 3", "https://notebooklm.google.com/notebook/ccc"},
 	}
 
-	for hash, url := range entries {
-		if err := store.SaveMapping(hash, url); err != nil {
+	for _, in := range inputs {
+		hash := ComputeSHA256(in.text)
+		if err := store.SaveMapping(hash, in.url, in.text); err != nil {
 			t.Fatalf("SaveMapping() error = %v", err)
 		}
 	}
 
-	for hash, wantURL := range entries {
-		gotURL, found := store.LookupNotebook(hash)
+	for _, in := range inputs {
+		hash := ComputeSHA256(in.text)
+		entry, found := store.LookupEntry(hash)
 		if !found {
-			t.Errorf("expected found for hash %q", hash)
+			t.Errorf("expected found for hash of %q", in.text)
 		}
-		if gotURL != wantURL {
-			t.Errorf("LookupNotebook(%q) = %q, want %q", hash, gotURL, wantURL)
+		if entry.URL != in.url {
+			t.Errorf("entry.URL = %q, want %q", entry.URL, in.url)
 		}
 	}
 }
@@ -117,7 +124,7 @@ func TestMappingStore_DeleteByURL(t *testing.T) {
 
 	hash := ComputeSHA256("delete test")
 	url := "https://notebooklm.google.com/notebook/to-delete"
-	if err := store.SaveMapping(hash, url); err != nil {
+	if err := store.SaveMapping(hash, url, "delete test"); err != nil {
 		t.Fatalf("SaveMapping() error = %v", err)
 	}
 
@@ -125,7 +132,7 @@ func TestMappingStore_DeleteByURL(t *testing.T) {
 		t.Fatalf("DeleteByURL() error = %v", err)
 	}
 
-	_, found := store.LookupNotebook(hash)
+	_, found := store.LookupEntry(hash)
 	if found {
 		t.Error("expected not found after DeleteByURL")
 	}
@@ -140,10 +147,10 @@ func TestMappingStore_DeleteByURL_PreservesOtherEntries(t *testing.T) {
 	hash2 := ComputeSHA256("delete this")
 	url2 := "https://notebooklm.google.com/notebook/delete"
 
-	if err := store.SaveMapping(hash1, url1); err != nil {
+	if err := store.SaveMapping(hash1, url1, "keep this"); err != nil {
 		t.Fatal(err)
 	}
-	if err := store.SaveMapping(hash2, url2); err != nil {
+	if err := store.SaveMapping(hash2, url2, "delete this"); err != nil {
 		t.Fatal(err)
 	}
 
@@ -151,13 +158,53 @@ func TestMappingStore_DeleteByURL_PreservesOtherEntries(t *testing.T) {
 		t.Fatalf("DeleteByURL() error = %v", err)
 	}
 
-	_, found1 := store.LookupNotebook(hash1)
+	_, found1 := store.LookupEntry(hash1)
 	if !found1 {
 		t.Error("expected keep entry to still exist")
 	}
 
-	_, found2 := store.LookupNotebook(hash2)
+	_, found2 := store.LookupEntry(hash2)
 	if found2 {
 		t.Error("expected deleted entry to be gone")
+	}
+}
+
+func TestMappingStore_UpdateDownload(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
+
+	hash := ComputeSHA256("download test")
+	if err := store.SaveMapping(hash, "https://notebooklm.google.com/notebook/dl", "download test"); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.UpdateDownload(hash, "infographic", "./images/test.png"); err != nil {
+		t.Fatalf("UpdateDownload() error = %v", err)
+	}
+
+	entry, _ := store.LookupEntry(hash)
+	if entry.Downloads["infographic"] != "./images/test.png" {
+		t.Errorf("Downloads[infographic] = %q, want ./images/test.png", entry.Downloads["infographic"])
+	}
+}
+
+func TestGenerateDefaultTitle(t *testing.T) {
+	title := GenerateDefaultTitle("AIの最新動向について解説します。これは長いテキストなので30文字で切られるはずです。")
+	if len([]rune(title)) > 40 { // 30文字 + _YYYYMMDD(9文字)
+		t.Errorf("title too long: %q (%d runes)", title, len([]rune(title)))
+	}
+}
+
+func TestGenerateDefaultTitle_EmptyText(t *testing.T) {
+	title := GenerateDefaultTitle("")
+	if title == "" {
+		t.Error("expected non-empty title even for empty input")
+	}
+}
+
+func TestGenerateDefaultTitle_ShortText(t *testing.T) {
+	title := GenerateDefaultTitle("短いテキスト")
+	if title == "" {
+		t.Error("expected non-empty title")
 	}
 }

@@ -12,10 +12,10 @@ func ResolveSource(text string, store *MappingStore) (string, error) {
 	}
 
 	hash := ComputeSHA256(text)
-	url, found := store.LookupNotebook(hash)
+	entry, found := store.LookupEntry(hash)
 	if !found {
 		return "", fmt.Errorf("マッピングが見つかりません（hash=%s）", hash[:12])
 	}
 
-	return url, nil
+	return entry.URL, nil
 }
