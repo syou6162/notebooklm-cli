@@ -16,7 +16,10 @@ type Browser interface {
 	FocusElement(selector string) error
 	PageContainsText(text string) bool
 	CloseSourceViewerIfOpen()
+	CountCardsByDescription(cardDescription string) int
 	CountInfographicCards() int
+	CountAudioCards() int
+	ClickMoreButtonOnCard(cardDescription string) error
 	ClickMoreButtonOnFirstInfographicCard() error
 	ListSourceNames() ([]string, error)
 
