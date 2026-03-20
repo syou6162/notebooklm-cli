@@ -26,4 +26,11 @@ const (
 
 	// ソースカウント
 	sourceCheckbox = "mat-checkbox"
+
+	// インフォグラフィック生成
+	infographicButtonAria = "インフォグラフィック"
+	generatingText        = "インフォグラフィックを生成しています"
+
+	// ダウンロード
+	downloadMenuText = "ダウンロード"
 )

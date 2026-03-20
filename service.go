@@ -151,10 +151,89 @@ func (s *Service) AddSource(text string) error {
 	return nil
 }
 
-// DeleteSource はノートブック内の全ソースを削除する
+// DeleteSource はノートブック内の全ソースを削除し、マッピングも削除する
 func (s *Service) DeleteSource() error {
 	if err := s.EnsureNotebookPage(); err != nil {
 		return err
 	}
-	return s.DeleteAllSources()
+	if err := s.DeleteAllSources(); err != nil {
+		return err
+	}
+	return s.mapping.DeleteByURL(s.notebookURL)
+}
+
+// DeleteAllInfographics は既存のインフォグラフィックをすべて削除する
+func (s *Service) DeleteAllInfographics() error {
+	for range maxDeleteAttempts {
+		if s.client.CountInfographicCards() <= 0 {
+			return nil
+		}
+
+		if err := s.client.ClickMoreButtonOnFirstInfographicCard(); err != nil {
+			return err
+		}
+		time.Sleep(500 * time.Millisecond)
+
+		if err := s.client.ClickMenuItem(deleteMenuText); err != nil {
+			return err
+		}
+		time.Sleep(500 * time.Millisecond)
+
+		if err := s.client.ClickOverlayButton(confirmDeleteText); err != nil {
+			return err
+		}
+		time.Sleep(1500 * time.Millisecond)
+	}
+
+	return &BrowserError{
+		Message: fmt.Sprintf("インフォグラフィックの削除に失敗しました（%d回試行後もカードが残存しています）", maxDeleteAttempts),
+	}
+}
+
+// GenerateInfographic は既存インフォグラフィックを削除してから生成を開始する（即返し）
+func (s *Service) GenerateInfographic() error {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return err
+	}
+
+	if err := s.DeleteAllInfographics(); err != nil {
+		return err
+	}
+
+	return s.client.ClickButton(infographicButtonAria)
+}
+
+// StatusInfographic はインフォグラフィックの生成状態を返す
+func (s *Service) StatusInfographic() (string, error) {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return "", err
+	}
+
+	if s.client.PageContainsText(generatingText) {
+		return "generating", nil
+	}
+
+	if s.client.CountInfographicCards() > 0 {
+		return "done", nil
+	}
+
+	return "none", nil
+}
+
+// DownloadInfographic はインフォグラフィックをダウンロードする
+func (s *Service) DownloadInfographic() error {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return err
+	}
+
+	if s.client.CountInfographicCards() <= 0 {
+		return &BrowserError{Message: "インフォグラフィックカードが見つかりませんでした"}
+	}
+
+	if err := s.client.ClickMoreButtonOnFirstInfographicCard(); err != nil {
+		return err
+	}
+	time.Sleep(500 * time.Millisecond)
+
+	return s.client.ClickMenuItem(downloadMenuText)
 }

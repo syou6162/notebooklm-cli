@@ -322,6 +322,59 @@ end tell`, safeURL, safeURL)
 	return idx, nil
 }
 
+// CountInfographicCards はStudioパネルのインフォグラフィックカード数を取得する
+func (c *Client) CountInfographicCards() int {
+	jsCode := `(() => {
+		var buttons = document.querySelectorAll('button');
+		var count = 0;
+		for (var i = 0; i < buttons.length; i++) {
+			var text = buttons[i].textContent || '';
+			if (text.indexOf('stacked_bar_chart') !== -1) count++;
+		}
+		return '' + count;
+	})()`
+	result, err := c.executeJS(jsCode, defaultTimeout)
+	if err != nil {
+		return 0
+	}
+	var count int
+	if _, err := fmt.Sscanf(result, "%d", &count); err != nil {
+		return 0
+	}
+	return count
+}
+
+// ClickMoreButtonOnFirstInfographicCard は最初のインフォグラフィックカードの「もっと見る」をクリックする
+func (c *Client) ClickMoreButtonOnFirstInfographicCard() error {
+	jsCode := `(() => {
+		var buttons = document.querySelectorAll('button');
+		var infographicMoreButtons = [];
+		for (var i = 0; i < buttons.length; i++) {
+			var aria = buttons[i].getAttribute('aria-label') || '';
+			if (aria === 'もっと見る') {
+				var parent = buttons[i].closest('.artifact-button-content')
+					|| buttons[i].parentElement;
+				var parentText = parent ? (parent.textContent || '').trim() : '';
+				if (parentText.indexOf('stacked_bar_chart') !== -1
+						|| parentText.indexOf('インフォグラフィック') !== -1) {
+					infographicMoreButtons.push(buttons[i]);
+				}
+			}
+		}
+		if (infographicMoreButtons.length === 0) return 'NOT_FOUND';
+		infographicMoreButtons[0].click();
+		return 'CLICKED';
+	})()`
+	result, err := c.executeJS(jsCode, defaultTimeout)
+	if err != nil {
+		return err
+	}
+	if result != "CLICKED" {
+		return &BrowserError{Message: "インフォグラフィックの「もっと見る」ボタンが見つかりませんでした"}
+	}
+	return nil
+}
+
 // CloseSourceViewerIfOpen はソースビューアが開いている場合に閉じる（冪等）
 func (c *Client) CloseSourceViewerIfOpen() {
 	jsCode := fmt.Sprintf(`(() => {
