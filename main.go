@@ -58,6 +58,20 @@ func main() {
 				},
 			},
 			{
+				Name:  "list",
+				Usage: "リソースの一覧を表示する",
+				Commands: []*cli.Command{
+					{
+						Name:  "source",
+						Usage: "ノートブック内のソース一覧を表示する",
+						Flags: []cli.Flag{notebookURLFlag},
+						Action: func(_ context.Context, cmd *cli.Command) error {
+							return listSourceAction(cmd.String("notebook-url"))
+						},
+					},
+				},
+			},
+			{
 				Name:  "resolve",
 				Usage: "マッピングからリソースを解決する",
 				Commands: []*cli.Command{
@@ -143,6 +157,22 @@ func addSourceAction(xdg *XDGPaths, reader io.Reader, notebookURL string) error 
 	service := NewService(client, notebookURL, mapping)
 
 	return service.AddSource(string(text))
+}
+
+func listSourceAction(notebookURL string) error {
+	client := NewClient(1)
+	mapping := NewMappingStore("")
+	service := NewService(client, notebookURL, mapping)
+
+	names, err := service.ListSources()
+	if err != nil {
+		return err
+	}
+
+	for _, name := range names {
+		fmt.Println(name)
+	}
+	return nil
 }
 
 func deleteSourceAction(xdg *XDGPaths, notebookURL string) error {
