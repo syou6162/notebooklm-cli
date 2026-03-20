@@ -88,6 +88,58 @@ func TestFindDownloadedInfographic_ReturnsLatest(t *testing.T) {
 	}
 }
 
+func TestFindDownloadedAudio_FindsM4A(t *testing.T) {
+	tmpDir := t.TempDir()
+	startTime := time.Now().Add(-1 * time.Second)
+	m4aFile := filepath.Join(tmpDir, "テストタイトル.m4a")
+	if err := os.WriteFile(m4aFile, make([]byte, 5*1024*1024), 0644); err != nil {
+		t.Fatal(err)
+	}
+	result, err := FindDownloadedAudio(tmpDir, startTime, 1_000_000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != m4aFile {
+		t.Errorf("got %q, want %q", result, m4aFile)
+	}
+}
+
+func TestFindDownloadedAudio_IgnoresOldFiles(t *testing.T) {
+	tmpDir := t.TempDir()
+	m4aFile := filepath.Join(tmpDir, "old.m4a")
+	if err := os.WriteFile(m4aFile, make([]byte, 5*1024*1024), 0644); err != nil {
+		t.Fatal(err)
+	}
+	startTime := time.Now().Add(10 * time.Second)
+	_, err := FindDownloadedAudio(tmpDir, startTime, 1_000_000)
+	if err == nil {
+		t.Fatal("expected error for old file, got nil")
+	}
+}
+
+func TestFindDownloadedAudio_ReturnsLatest(t *testing.T) {
+	tmpDir := t.TempDir()
+	startTime := time.Now().Add(-1 * time.Second)
+
+	old := filepath.Join(tmpDir, "old.m4a")
+	if err := os.WriteFile(old, make([]byte, 5*1024*1024), 0644); err != nil {
+		t.Fatal(err)
+	}
+	time.Sleep(10 * time.Millisecond)
+	newer := filepath.Join(tmpDir, "newer.m4a")
+	if err := os.WriteFile(newer, make([]byte, 5*1024*1024), 0644); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := FindDownloadedAudio(tmpDir, startTime, 1_000_000)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if result != newer {
+		t.Errorf("got %q, want %q", result, newer)
+	}
+}
+
 func TestMoveToOutput_MovesWithRename(t *testing.T) {
 	tmpDir := t.TempDir()
 	src := filepath.Join(tmpDir, "unnamed.png")

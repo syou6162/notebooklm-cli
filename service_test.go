@@ -14,6 +14,7 @@ type mockBrowser struct {
 	findTabFound     bool
 	elementCount     int
 	infographicCards int
+	audioCards       int
 	pageText         string
 	sourceNames      []string
 	clickedButtons   []string
@@ -56,7 +57,10 @@ func (m *mockBrowser) PageContainsText(text string) bool {
 	return m.pageText != "" && m.pageText == text
 }
 func (m *mockBrowser) CloseSourceViewerIfOpen()                     {}
+func (m *mockBrowser) CountCardsByDescription(_ string) int         { return m.infographicCards }
 func (m *mockBrowser) CountInfographicCards() int                   { return m.infographicCards }
+func (m *mockBrowser) CountAudioCards() int                         { return m.audioCards }
+func (m *mockBrowser) ClickMoreButtonOnCard(_ string) error         { return nil }
 func (m *mockBrowser) ClickMoreButtonOnFirstInfographicCard() error { return nil }
 func (m *mockBrowser) ListSourceNames() ([]string, error)           { return m.sourceNames, nil }
 func (m *mockBrowser) SetTabIndex(index int)                        { m.tabIndex = index }

@@ -38,6 +38,11 @@ const (
 	moreButtonDescription      = "もっと見る"
 	generatingText             = "インフォグラフィックを生成しています"
 
+	// 音声解説生成
+	audioButtonAria      = "音声解説"
+	audioCardDescription = "音声解説"
+	audioGeneratingText  = "音声解説を生成しています"
+
 	// ダウンロード
 	downloadMenuText = "ダウンロード"
 )

@@ -322,3 +322,79 @@ func (s *Service) DownloadInfographic() error {
 
 	return s.client.ClickMenuItem(downloadMenuText)
 }
+
+// DeleteAllAudio は既存の音声解説をすべて削除する
+func (s *Service) DeleteAllAudio() error {
+	for range maxDeleteAttempts {
+		if s.client.CountAudioCards() <= 0 {
+			return nil
+		}
+
+		if err := s.client.ClickMoreButtonOnCard(audioCardDescription); err != nil {
+			return err
+		}
+		s.sleep(500 * time.Millisecond)
+
+		if err := s.client.ClickMenuItem(deleteMenuText); err != nil {
+			return err
+		}
+		s.sleep(500 * time.Millisecond)
+
+		if err := s.client.ClickOverlayButton(confirmDeleteText); err != nil {
+			return err
+		}
+		s.sleep(1500 * time.Millisecond)
+	}
+
+	return &BrowserError{
+		Message: fmt.Sprintf("音声解説の削除に失敗しました（%d回試行後もカードが残存しています）", maxDeleteAttempts),
+	}
+}
+
+// GenerateAudio は既存音声解説を削除してから生成を開始する（即返し）
+func (s *Service) GenerateAudio() error {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return err
+	}
+
+	if err := s.DeleteAllAudio(); err != nil {
+		return err
+	}
+
+	return s.client.ClickButton(audioButtonAria)
+}
+
+// StatusAudio は音声解説の生成状態を返す
+func (s *Service) StatusAudio() (string, error) {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return "", err
+	}
+
+	if s.client.PageContainsText(audioGeneratingText) {
+		return "generating", nil
+	}
+
+	if s.client.CountAudioCards() > 0 {
+		return "done", nil
+	}
+
+	return "none", nil
+}
+
+// DownloadAudio は音声解説をダウンロードする
+func (s *Service) DownloadAudio() error {
+	if err := s.EnsureNotebookPage(); err != nil {
+		return err
+	}
+
+	if s.client.CountAudioCards() <= 0 {
+		return &BrowserError{Message: "音声解説カードが見つかりませんでした"}
+	}
+
+	if err := s.client.ClickMoreButtonOnCard(audioCardDescription); err != nil {
+		return err
+	}
+	s.sleep(500 * time.Millisecond)
+
+	return s.client.ClickMenuItem(downloadMenuText)
+}
