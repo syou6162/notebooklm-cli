@@ -12,17 +12,19 @@ const (
 
 // Service はNotebookLM高レベルワークフロー
 type Service struct {
-	client      *Client
+	client      Browser
 	notebookURL string
 	mapping     *MappingStore
+	sleep       Sleeper
 }
 
 // NewService は新しいServiceを作成する
-func NewService(client *Client, notebookURL string, mapping *MappingStore) *Service {
+func NewService(client Browser, notebookURL string, mapping *MappingStore) *Service {
 	return &Service{
 		client:      client,
 		notebookURL: notebookURL,
 		mapping:     mapping,
+		sleep:       RealSleep,
 	}
 }
 
@@ -34,13 +36,13 @@ func (s *Service) EnsureNotebookPage() error {
 		if err != nil {
 			return err
 		}
-		s.client.tabIndex = newTab
-		time.Sleep(3 * time.Second)
+		s.client.SetTabIndex(newTab)
+		s.sleep(3 * time.Second)
 		return nil
 	}
 
-	s.client.tabIndex = tabIndex
-	if err := s.client.activateChrome(); err != nil {
+	s.client.SetTabIndex(tabIndex)
+	if err := s.client.ActivateChrome(); err != nil {
 		return err
 	}
 	currentURL, err := s.client.GetCurrentURL()
@@ -51,7 +53,7 @@ func (s *Service) EnsureNotebookPage() error {
 		if err := s.client.NavigateTo(s.notebookURL); err != nil {
 			return err
 		}
-		time.Sleep(3 * time.Second)
+		s.sleep(3 * time.Second)
 	}
 	return nil
 }
@@ -69,17 +71,17 @@ func (s *Service) DeleteAllSources() error {
 		if err := s.client.ClickButton(moreButtonAria); err != nil {
 			return err
 		}
-		time.Sleep(500 * time.Millisecond)
+		s.sleep(500 * time.Millisecond)
 
 		if err := s.client.ClickMenuItem(deleteMenuText); err != nil {
 			return err
 		}
-		time.Sleep(500 * time.Millisecond)
+		s.sleep(500 * time.Millisecond)
 
 		if err := s.client.ClickOverlayButton(confirmDeleteText); err != nil {
 			return err
 		}
-		time.Sleep(1 * time.Second)
+		s.sleep(1 * time.Second)
 	}
 
 	return &BrowserError{
@@ -94,41 +96,40 @@ func (s *Service) AddSourceText(text string) error {
 	if err := s.client.ClickButton(sourceAddButtonAria); err != nil {
 		return err
 	}
-	time.Sleep(1 * time.Second)
+	s.sleep(1 * time.Second)
 
 	if err := s.client.ClickButtonByText(pasteTextIcon); err != nil {
 		return err
 	}
-	time.Sleep(500 * time.Millisecond)
+	s.sleep(500 * time.Millisecond)
 
-	if err := s.client.activateChrome(); err != nil {
+	if err := s.client.ActivateChrome(); err != nil {
 		return err
 	}
 	if err := s.client.FocusElement("." + textareaClass); err != nil {
 		return err
 	}
-	time.Sleep(300 * time.Millisecond)
+	s.sleep(300 * time.Millisecond)
 
-	if err := s.client.clipboardPaste(text); err != nil {
+	if err := s.client.ClipboardPaste(text); err != nil {
 		return err
 	}
-	time.Sleep(1 * time.Second)
+	s.sleep(1 * time.Second)
 
 	if err := s.client.ClickButtonByText(insertButtonText); err != nil {
 		return err
 	}
-	time.Sleep(2 * time.Second)
+	s.sleep(2 * time.Second)
 
 	return nil
 }
 
 // CreateNotebook はNotebookLMホームページで新規ノートブックを作成し、URLを返す
 func (s *Service) CreateNotebook() (string, error) {
-	// ホームページにナビゲート
 	tab, found := s.client.FindNotebookTab()
 	if found {
-		s.client.tabIndex = tab
-		if err := s.client.activateChrome(); err != nil {
+		s.client.SetTabIndex(tab)
+		if err := s.client.ActivateChrome(); err != nil {
 			return "", err
 		}
 		if err := s.client.NavigateTo(notebookLMHomeURL); err != nil {
@@ -139,25 +140,22 @@ func (s *Service) CreateNotebook() (string, error) {
 		if err != nil {
 			return "", err
 		}
-		s.client.tabIndex = newTab
+		s.client.SetTabIndex(newTab)
 	}
-	time.Sleep(3 * time.Second)
+	s.sleep(3 * time.Second)
 
-	// 「ノートブックを新規作成」ボタンをクリック（aria-labelで検索）
 	if err := s.client.ClickButton(createNotebookButtonText); err != nil {
 		return "", fmt.Errorf("ノートブック作成ボタンが見つかりませんでした: %w", err)
 	}
-	time.Sleep(5 * time.Second)
+	s.sleep(5 * time.Second)
 
-	// 新しいノートブックのURLを取得
 	url, err := s.client.GetCurrentURL()
 	if err != nil {
 		return "", err
 	}
 
-	// ソース追加ダイアログを閉じる（自動で表示される）
 	s.client.CloseSourceViewerIfOpen()
-	time.Sleep(1 * time.Second)
+	s.sleep(1 * time.Second)
 
 	return url, nil
 }
@@ -174,7 +172,6 @@ func (s *Service) AddSource(text string) error {
 		return nil
 	}
 
-	// notebookURLが指定されていない場合は新規ノートブックを作成
 	if s.notebookURL == "" {
 		url, err := s.CreateNotebook()
 		if err != nil {
@@ -232,17 +229,17 @@ func (s *Service) DeleteAllInfographics() error {
 		if err := s.client.ClickMoreButtonOnFirstInfographicCard(); err != nil {
 			return err
 		}
-		time.Sleep(500 * time.Millisecond)
+		s.sleep(500 * time.Millisecond)
 
 		if err := s.client.ClickMenuItem(deleteMenuText); err != nil {
 			return err
 		}
-		time.Sleep(500 * time.Millisecond)
+		s.sleep(500 * time.Millisecond)
 
 		if err := s.client.ClickOverlayButton(confirmDeleteText); err != nil {
 			return err
 		}
-		time.Sleep(1500 * time.Millisecond)
+		s.sleep(1500 * time.Millisecond)
 	}
 
 	return &BrowserError{
@@ -293,7 +290,7 @@ func (s *Service) DownloadInfographic() error {
 	if err := s.client.ClickMoreButtonOnFirstInfographicCard(); err != nil {
 		return err
 	}
-	time.Sleep(500 * time.Millisecond)
+	s.sleep(500 * time.Millisecond)
 
 	return s.client.ClickMenuItem(downloadMenuText)
 }
