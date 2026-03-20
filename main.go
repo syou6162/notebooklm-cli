@@ -155,6 +155,7 @@ func addSourceAction(xdg *XDGPaths, reader io.Reader, notebookURL string) error 
 	mapping := NewMappingStore(xdg.MappingFile())
 	client := NewClient(1)
 	service := NewService(client, notebookURL, mapping)
+	service.metadataGen = NewClaudeMetadataGenerator()
 
 	return service.AddSource(string(text))
 }

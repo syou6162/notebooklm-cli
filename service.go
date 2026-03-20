@@ -16,6 +16,7 @@ type Service struct {
 	notebookURL string
 	mapping     *MappingStore
 	sleep       Sleeper
+	metadataGen MetadataGenerator
 }
 
 // NewService は新しいServiceを作成する
@@ -193,7 +194,21 @@ func (s *Service) AddSource(text string) error {
 		return err
 	}
 
-	if err := s.mapping.SaveMapping(hash, currentURL, text); err != nil {
+	entry := &MappingEntry{URL: currentURL}
+	if s.metadataGen != nil {
+		meta, err := s.metadataGen.Generate(text)
+		if err != nil {
+			fmt.Printf("メタデータ生成に失敗しました（決め打ちタイトルを使用）: %v\n", err)
+			entry.Title = GenerateDefaultTitle(text)
+		} else {
+			entry.Title = meta.Title
+			entry.Description = meta.Description
+		}
+	} else {
+		entry.Title = GenerateDefaultTitle(text)
+	}
+
+	if err := s.mapping.SaveEntry(hash, entry); err != nil {
 		return fmt.Errorf("マッピングの保存に失敗しました: %w", err)
 	}
 
