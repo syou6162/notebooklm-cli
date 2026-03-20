@@ -25,7 +25,8 @@ const (
 	confirmDeleteText = "削除"
 
 	// ソースカウント
-	sourceCheckbox = "mat-checkbox"
+	sourceCheckbox        = "mat-checkbox"
+	selectAllSourcesLabel = "すべてのソースを選択"
 
 	// インフォグラフィック生成
 	infographicButtonAria      = "インフォグラフィック"
