@@ -122,6 +122,46 @@ func (s *Service) AddSourceText(text string) error {
 	return nil
 }
 
+// CreateNotebook はNotebookLMホームページで新規ノートブックを作成し、URLを返す
+func (s *Service) CreateNotebook() (string, error) {
+	// ホームページにナビゲート
+	tab, found := s.client.FindNotebookTab()
+	if found {
+		s.client.tabIndex = tab
+		if err := s.client.activateChrome(); err != nil {
+			return "", err
+		}
+		if err := s.client.NavigateTo(notebookLMHomeURL); err != nil {
+			return "", err
+		}
+	} else {
+		newTab, err := s.client.OpenURLInNewTab(notebookLMHomeURL)
+		if err != nil {
+			return "", err
+		}
+		s.client.tabIndex = newTab
+	}
+	time.Sleep(3 * time.Second)
+
+	// 「ノートブックを新規作成」ボタンをクリック（aria-labelで検索）
+	if err := s.client.ClickButton(createNotebookButtonText); err != nil {
+		return "", fmt.Errorf("ノートブック作成ボタンが見つかりませんでした: %w", err)
+	}
+	time.Sleep(5 * time.Second)
+
+	// 新しいノートブックのURLを取得
+	url, err := s.client.GetCurrentURL()
+	if err != nil {
+		return "", err
+	}
+
+	// ソース追加ダイアログを閉じる（自動で表示される）
+	s.client.CloseSourceViewerIfOpen()
+	time.Sleep(1 * time.Second)
+
+	return url, nil
+}
+
 // AddSource はテキストからソースを追加する（マッピング管理込み）
 func (s *Service) AddSource(text string) error {
 	if strings.TrimSpace(text) == "" {
@@ -132,6 +172,15 @@ func (s *Service) AddSource(text string) error {
 	if _, found := s.mapping.LookupNotebook(hash); found {
 		fmt.Println("同一入力のノートブックが既に存在します。スキップします。")
 		return nil
+	}
+
+	// notebookURLが指定されていない場合は新規ノートブックを作成
+	if s.notebookURL == "" {
+		url, err := s.CreateNotebook()
+		if err != nil {
+			return fmt.Errorf("ノートブックの作成に失敗しました: %w", err)
+		}
+		s.notebookURL = url
 	}
 
 	if err := s.EnsureNotebookPage(); err != nil {

@@ -28,6 +28,10 @@ const (
 	sourceCheckbox        = "mat-checkbox"
 	selectAllSourcesLabel = "すべてのソースを選択"
 
+	// ノートブック作成
+	notebookLMHomeURL        = "https://notebooklm.google.com/"
+	createNotebookButtonText = "ノートブックを新規作成"
+
 	// インフォグラフィック生成
 	infographicButtonAria      = "インフォグラフィック"
 	infographicCardDescription = "インフォグラフィック"
