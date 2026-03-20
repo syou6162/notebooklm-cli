@@ -16,15 +16,17 @@ type Service struct {
 	notebookURL string
 	mapping     *MappingStore
 	sleep       Sleeper
+	metadataGen MetadataGenerator
 }
 
 // NewService は新しいServiceを作成する
-func NewService(client Browser, notebookURL string, mapping *MappingStore) *Service {
+func NewService(client Browser, notebookURL string, mapping *MappingStore, metadataGen MetadataGenerator) *Service {
 	return &Service{
 		client:      client,
 		notebookURL: notebookURL,
 		mapping:     mapping,
 		sleep:       RealSleep,
+		metadataGen: metadataGen,
 	}
 }
 
@@ -172,12 +174,35 @@ func (s *Service) AddSource(text string) error {
 		return nil
 	}
 
+	// メタデータ生成（ブラウザ操作不要なので先に実行）
+	if s.metadataGen == nil {
+		return &BrowserError{Message: "MetadataGeneratorが設定されていません"}
+	}
+	meta, err := s.metadataGen.Generate(text)
+	if err != nil {
+		return fmt.Errorf("メタデータ生成に失敗しました: %w", err)
+	}
+
+	// メタデータを先に保存（ブラウザ操作失敗時にも結果が残る）
+	entry := &MappingEntry{
+		URL:         s.notebookURL,
+		Title:       meta.Title,
+		Description: meta.Description,
+	}
+	if err := s.mapping.SaveEntry(hash, entry); err != nil {
+		return fmt.Errorf("マッピングの保存に失敗しました: %w", err)
+	}
+
 	if s.notebookURL == "" {
 		url, err := s.CreateNotebook()
 		if err != nil {
 			return fmt.Errorf("ノートブックの作成に失敗しました: %w", err)
 		}
 		s.notebookURL = url
+		entry.URL = url
+		if err := s.mapping.SaveEntry(hash, entry); err != nil {
+			return fmt.Errorf("マッピングの更新に失敗しました: %w", err)
+		}
 	}
 
 	if err := s.EnsureNotebookPage(); err != nil {
@@ -188,13 +213,16 @@ func (s *Service) AddSource(text string) error {
 		return err
 	}
 
+	// ソース追加後のURLで最終更新（リダイレクト等でURLが変わる場合がある）
 	currentURL, err := s.client.GetCurrentURL()
 	if err != nil {
 		return err
 	}
-
-	if err := s.mapping.SaveMapping(hash, currentURL, text); err != nil {
-		return fmt.Errorf("マッピングの保存に失敗しました: %w", err)
+	if currentURL != entry.URL {
+		entry.URL = currentURL
+		if err := s.mapping.SaveEntry(hash, entry); err != nil {
+			return fmt.Errorf("マッピングの更新に失敗しました: %w", err)
+		}
 	}
 
 	return nil
