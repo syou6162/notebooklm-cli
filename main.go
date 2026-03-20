@@ -23,8 +23,14 @@ func main() {
 					{
 						Name:  "source",
 						Usage: "stdinからテキストを読み取りNotebookLMにソースとして追加する",
-						Action: func(_ context.Context, _ *cli.Command) error {
-							return addSourceAction(xdg, os.Stdin)
+						Flags: []cli.Flag{
+							&cli.StringFlag{
+								Name:  "notebook-url",
+								Usage: "ソースを追加するノートブックのURL",
+							},
+						},
+						Action: func(_ context.Context, cmd *cli.Command) error {
+							return addSourceAction(xdg, os.Stdin, cmd.String("notebook-url"))
 						},
 					},
 				},
@@ -58,7 +64,7 @@ func main() {
 	}
 }
 
-func addSourceAction(xdg *XDGPaths, reader io.Reader) error {
+func addSourceAction(xdg *XDGPaths, reader io.Reader, notebookURL string) error {
 	if err := xdg.EnsureDirectories(); err != nil {
 		return fmt.Errorf("ディレクトリの作成に失敗しました: %w", err)
 	}
@@ -70,7 +76,7 @@ func addSourceAction(xdg *XDGPaths, reader io.Reader) error {
 
 	mapping := NewMappingStore(xdg.MappingFile())
 	client := NewClient(1)
-	service := NewService(client, "", mapping)
+	service := NewService(client, notebookURL, mapping)
 
 	return service.AddSource(string(text))
 }
