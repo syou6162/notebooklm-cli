@@ -154,7 +154,7 @@ func addSourceAction(xdg *XDGPaths, reader io.Reader, notebookURL string) error 
 
 	mapping := NewMappingStore(xdg.MappingFile())
 	client := NewClient(1)
-	service := NewService(client, notebookURL, mapping)
+	service := NewService(client, notebookURL, mapping, NewClaudeMetadataGenerator())
 
 	return service.AddSource(string(text))
 }
@@ -162,7 +162,7 @@ func addSourceAction(xdg *XDGPaths, reader io.Reader, notebookURL string) error 
 func listSourceAction(notebookURL string) error {
 	client := NewClient(1)
 	mapping := NewMappingStore("")
-	service := NewService(client, notebookURL, mapping)
+	service := NewService(client, notebookURL, mapping, nil)
 
 	names, err := service.ListSources()
 	if err != nil {
@@ -178,7 +178,7 @@ func listSourceAction(notebookURL string) error {
 func deleteSourceAction(xdg *XDGPaths, notebookURL string) error {
 	client := NewClient(1)
 	mapping := NewMappingStore(xdg.MappingFile())
-	service := NewService(client, notebookURL, mapping)
+	service := NewService(client, notebookURL, mapping, nil)
 
 	return service.DeleteSource()
 }
@@ -202,7 +202,7 @@ func resolveSourceAction(xdg *XDGPaths, reader io.Reader) error {
 func generateInfographicAction(notebookURL string) error {
 	client := NewClient(1)
 	mapping := NewMappingStore("")
-	service := NewService(client, notebookURL, mapping)
+	service := NewService(client, notebookURL, mapping, nil)
 
 	return service.GenerateInfographic()
 }
@@ -210,7 +210,7 @@ func generateInfographicAction(notebookURL string) error {
 func statusInfographicAction(notebookURL string) error {
 	client := NewClient(1)
 	mapping := NewMappingStore("")
-	service := NewService(client, notebookURL, mapping)
+	service := NewService(client, notebookURL, mapping, nil)
 
 	status, err := service.StatusInfographic()
 	if err != nil {
@@ -224,7 +224,7 @@ func statusInfographicAction(notebookURL string) error {
 func downloadInfographicAction(notebookURL, outputDir string) error {
 	client := NewClient(1)
 	mapping := NewMappingStore("")
-	service := NewService(client, notebookURL, mapping)
+	service := NewService(client, notebookURL, mapping, nil)
 
 	if err := service.DownloadInfographic(); err != nil {
 		return err

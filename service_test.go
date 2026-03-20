@@ -78,7 +78,8 @@ func TestAddSource_SkipsWhenMappingExists(t *testing.T) {
 	}
 
 	browser := &mockBrowser{}
-	service := NewService(browser, "", store)
+	gen := &mockMetadataGenerator{title: "unused", description: "unused"}
+	service := NewService(browser, "", store, gen)
 	service.sleep = noSleep
 
 	err := service.AddSource(text)
@@ -87,6 +88,9 @@ func TestAddSource_SkipsWhenMappingExists(t *testing.T) {
 	}
 	if len(browser.clickedButtons) > 0 {
 		t.Error("expected no browser interaction when mapping exists")
+	}
+	if gen.called {
+		t.Error("expected metadata generator not to be called when mapping exists")
 	}
 }
 
@@ -98,7 +102,8 @@ func TestAddSource_CreatesNotebookWhenURLEmpty(t *testing.T) {
 		findTabFound: false,
 		currentURL:   "https://notebooklm.google.com/notebook/new-123",
 	}
-	service := NewService(browser, "", store)
+	gen := &mockMetadataGenerator{title: "テストタイトル", description: "テスト要約"}
+	service := NewService(browser, "", store, gen)
 	service.sleep = noSleep
 
 	err := service.AddSource("new input text")
@@ -138,7 +143,8 @@ func TestAddSource_UsesExistingURLWhenProvided(t *testing.T) {
 		findTabResult: 1,
 		currentURL:    "https://notebooklm.google.com/notebook/existing-456",
 	}
-	service := NewService(browser, "https://notebooklm.google.com/notebook/existing-456", store)
+	gen := &mockMetadataGenerator{title: "テストタイトル", description: "テスト要約"}
+	service := NewService(browser, "https://notebooklm.google.com/notebook/existing-456", store, gen)
 	service.sleep = noSleep
 
 	err := service.AddSource("input with url")
@@ -158,7 +164,7 @@ func TestAddSource_RejectsEmptyText(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
 	browser := &mockBrowser{}
-	service := NewService(browser, "", store)
+	service := NewService(browser, "", store, nil)
 	service.sleep = noSleep
 
 	err := service.AddSource("")
@@ -174,7 +180,7 @@ func TestCreateNotebook_ClicksCreateButton(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
-	service := NewService(browser, "", store)
+	service := NewService(browser, "", store, nil)
 	service.sleep = noSleep
 
 	url, err := service.CreateNotebook()
@@ -206,7 +212,7 @@ func TestDeleteSource_DeletesMappingToo(t *testing.T) {
 		currentURL:    notebookURL,
 		elementCount:  0,
 	}
-	service := NewService(browser, notebookURL, store)
+	service := NewService(browser, notebookURL, store, nil)
 	service.sleep = noSleep
 
 	if err := service.DeleteSource(); err != nil {
@@ -228,7 +234,7 @@ func TestStatusInfographic_ReturnsGenerating(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
-	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store)
+	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store, nil)
 	service.sleep = noSleep
 
 	status, err := service.StatusInfographic()
@@ -249,7 +255,7 @@ func TestStatusInfographic_ReturnsDone(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
-	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store)
+	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store, nil)
 	service.sleep = noSleep
 
 	status, err := service.StatusInfographic()
@@ -270,7 +276,7 @@ func TestStatusInfographic_ReturnsNone(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
-	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store)
+	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store, nil)
 	service.sleep = noSleep
 
 	status, err := service.StatusInfographic()
@@ -291,7 +297,7 @@ func TestListSources_ReturnsSourceNames(t *testing.T) {
 	}
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
-	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store)
+	service := NewService(browser, "https://notebooklm.google.com/notebook/test", store, nil)
 	service.sleep = noSleep
 
 	names, err := service.ListSources()
