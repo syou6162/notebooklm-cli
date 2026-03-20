@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"path/filepath"
 	"testing"
 )
@@ -83,7 +84,7 @@ func TestAddSource_WithMetadataGenerator(t *testing.T) {
 		description: "生成された要約",
 	}
 
-	service := NewService(browser, "", store)
+	service := NewService(browser, "", store, gen)
 	service.sleep = noSleep
 	service.metadataGen = gen
 
@@ -105,7 +106,7 @@ func TestAddSource_WithMetadataGenerator(t *testing.T) {
 	}
 }
 
-func TestAddSource_FallsBackToDefaultTitle(t *testing.T) {
+func TestAddSource_FailsWhenMetadataGenerationFails(t *testing.T) {
 	tmpDir := t.TempDir()
 	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
 
@@ -113,25 +114,15 @@ func TestAddSource_FallsBackToDefaultTitle(t *testing.T) {
 		findTabFound: false,
 		currentURL:   "https://notebooklm.google.com/notebook/new-456",
 	}
+	gen := &mockMetadataGenerator{
+		err: fmt.Errorf("claude -p failed"),
+	}
 
-	// metadataGenがnil → 決め打ちタイトルにフォールバック
-	service := NewService(browser, "", store)
+	service := NewService(browser, "", store, gen)
 	service.sleep = noSleep
 
-	err := service.AddSource("フォールバックテスト")
-	if err != nil {
-		t.Fatalf("AddSource() error = %v", err)
-	}
-
-	hash := ComputeSHA256("フォールバックテスト")
-	entry, found := store.LookupEntry(hash)
-	if !found {
-		t.Fatal("expected mapping to be saved")
-	}
-	if entry.Title == "" {
-		t.Error("expected non-empty fallback title")
-	}
-	if entry.Description != "" {
-		t.Error("expected empty description for fallback")
+	err := service.AddSource("テスト入力")
+	if err == nil {
+		t.Fatal("expected error when metadata generation fails")
 	}
 }
