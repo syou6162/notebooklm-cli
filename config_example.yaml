@@ -1,0 +1,16 @@
+# notebooklm-cli設定ファイルの例
+# デフォルトの場所: ~/.config/notebooklm-cli/config.yaml
+
+# ダウンロード先の設定（省略時は--outputフラグで毎回指定が必要）
+downloads:
+  # インフォグラフィックの出力先
+  infographic: "~/Documents/notebooklm/infographics"
+
+  # 音声ファイルの出力先（podselfのepisodes_dirと同じにすると連携しやすい）
+  audio: "~/.local/share/podself/episodes"
+
+  # スライドの出力先
+  # slide: "~/Documents/notebooklm/slides"
+
+  # 動画の出力先
+  # video: "~/Documents/notebooklm/videos"
