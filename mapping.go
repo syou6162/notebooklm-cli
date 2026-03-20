@@ -21,7 +21,7 @@ func ComputeSHA256(text string) string {
 // MappingEntry はノートブックのメタデータ
 type MappingEntry struct {
 	URL         string            `yaml:"url"`
-	Title       string            `yaml:"title"`
+	Title       string            `yaml:"title,omitempty"`
 	Description string            `yaml:"description,omitempty"`
 	Downloads   map[string]string `yaml:"downloads,omitempty"`
 }
