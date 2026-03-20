@@ -54,6 +54,26 @@ func (m *MappingStore) SaveMapping(hash, notebookURL string) error {
 	return os.WriteFile(m.path, out, 0644)
 }
 
+// DeleteByURL はノートブックURLに一致するマッピングを削除する
+func (m *MappingStore) DeleteByURL(notebookURL string) error {
+	data, err := m.load()
+	if err != nil {
+		return nil // ファイルが存在しない場合は何もしない
+	}
+
+	for hash, url := range data {
+		if url == notebookURL {
+			delete(data, hash)
+		}
+	}
+
+	out, err := yaml.Marshal(data)
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(m.path, out, 0644)
+}
+
 func (m *MappingStore) load() (map[string]string, error) {
 	raw, err := os.ReadFile(m.path)
 	if err != nil {

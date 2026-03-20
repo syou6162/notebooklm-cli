@@ -110,3 +110,54 @@ func TestMappingStore_MultipleEntries(t *testing.T) {
 		}
 	}
 }
+
+func TestMappingStore_DeleteByURL(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
+
+	hash := ComputeSHA256("delete test")
+	url := "https://notebooklm.google.com/notebook/to-delete"
+	if err := store.SaveMapping(hash, url); err != nil {
+		t.Fatalf("SaveMapping() error = %v", err)
+	}
+
+	if err := store.DeleteByURL(url); err != nil {
+		t.Fatalf("DeleteByURL() error = %v", err)
+	}
+
+	_, found := store.LookupNotebook(hash)
+	if found {
+		t.Error("expected not found after DeleteByURL")
+	}
+}
+
+func TestMappingStore_DeleteByURL_PreservesOtherEntries(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
+
+	hash1 := ComputeSHA256("keep this")
+	url1 := "https://notebooklm.google.com/notebook/keep"
+	hash2 := ComputeSHA256("delete this")
+	url2 := "https://notebooklm.google.com/notebook/delete"
+
+	if err := store.SaveMapping(hash1, url1); err != nil {
+		t.Fatal(err)
+	}
+	if err := store.SaveMapping(hash2, url2); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := store.DeleteByURL(url2); err != nil {
+		t.Fatalf("DeleteByURL() error = %v", err)
+	}
+
+	_, found1 := store.LookupNotebook(hash1)
+	if !found1 {
+		t.Error("expected keep entry to still exist")
+	}
+
+	_, found2 := store.LookupNotebook(hash2)
+	if found2 {
+		t.Error("expected deleted entry to be gone")
+	}
+}
