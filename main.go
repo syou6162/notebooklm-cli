@@ -128,7 +128,7 @@ func main() {
 							},
 						},
 						Action: func(_ context.Context, cmd *cli.Command) error {
-							return downloadInfographicAction(cmd.String("notebook-url"), cmd.String("output"))
+							return downloadInfographicAction(xdg, cmd.String("notebook-url"), cmd.String("output"))
 						},
 					},
 				},
@@ -221,9 +221,17 @@ func statusInfographicAction(notebookURL string) error {
 	return nil
 }
 
-func downloadInfographicAction(notebookURL, outputDir string) error {
+func downloadInfographicAction(xdg *XDGPaths, notebookURL, outputDir string) error {
+	mapping := NewMappingStore(xdg.MappingFile())
+
+	// マッピングからtitleを取得
+	entry, hash, found := mapping.LookupByURL(notebookURL)
+	var title string
+	if found {
+		title = entry.Title
+	}
+
 	client := NewClient(1)
-	mapping := NewMappingStore("")
 	service := NewService(client, notebookURL, mapping, nil)
 
 	if err := service.DownloadInfographic(); err != nil {
@@ -238,9 +246,9 @@ func downloadInfographicAction(notebookURL, outputDir string) error {
 	var downloaded string
 	deadline := time.Now().Add(60 * time.Second)
 	for time.Now().Before(deadline) {
-		found, err := FindDownloadedInfographic(downloadsDir, startTime, 1_000_000)
+		f, err := FindDownloadedInfographic(downloadsDir, startTime, 1_000_000)
 		if err == nil {
-			downloaded = found
+			downloaded = f
 			break
 		}
 		time.Sleep(3 * time.Second)
@@ -250,9 +258,16 @@ func downloadInfographicAction(notebookURL, outputDir string) error {
 		return fmt.Errorf("ダウンロードがタイムアウトしました: %s/unnamed*.png", downloadsDir)
 	}
 
-	dest, err := CopyToOutput(downloaded, outputDir)
+	dest, err := MoveToOutput(downloaded, outputDir, title)
 	if err != nil {
-		return fmt.Errorf("ファイルのコピーに失敗しました: %w", err)
+		return fmt.Errorf("ファイルの移動に失敗しました: %w", err)
+	}
+
+	// マッピングにダウンロード済みパスを記録
+	if found {
+		if err := mapping.UpdateDownload(hash, "infographic", dest); err != nil {
+			fmt.Printf("マッピングの更新に失敗しました: %v\n", err)
+		}
 	}
 
 	fmt.Println(dest)
