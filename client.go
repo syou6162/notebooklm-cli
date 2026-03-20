@@ -322,8 +322,8 @@ end tell`, safeURL, safeURL)
 	return idx, nil
 }
 
-// CountInfographicCards はStudioパネルのインフォグラフィックカード数を取得する
-func (c *Client) CountInfographicCards() int {
+// CountCardsByDescription はaria-descriptionに一致するカード数を取得する
+func (c *Client) CountCardsByDescription(cardDescription string) int {
 	jsCode := fmt.Sprintf(`(() => {
 		var buttons = document.querySelectorAll('button[aria-description]');
 		var count = 0;
@@ -332,7 +332,7 @@ func (c *Client) CountInfographicCards() int {
 			if (desc === '%s') count++;
 		}
 		return '' + count;
-	})()`, infographicCardDescription)
+	})()`, cardDescription)
 	result, err := c.executeJS(jsCode, defaultTimeout)
 	if err != nil {
 		return 0
@@ -344,8 +344,18 @@ func (c *Client) CountInfographicCards() int {
 	return count
 }
 
-// ClickMoreButtonOnFirstInfographicCard は最初のインフォグラフィックカードの「もっと見る」をクリックする
-func (c *Client) ClickMoreButtonOnFirstInfographicCard() error {
+// CountInfographicCards はStudioパネルのインフォグラフィックカード数を取得する
+func (c *Client) CountInfographicCards() int {
+	return c.CountCardsByDescription(infographicCardDescription)
+}
+
+// CountAudioCards はStudioパネルの音声解説カード数を取得する
+func (c *Client) CountAudioCards() int {
+	return c.CountCardsByDescription(audioCardDescription)
+}
+
+// ClickMoreButtonOnCard は指定descriptionのカードの「もっと見る」をクリックする
+func (c *Client) ClickMoreButtonOnCard(cardDescription string) error {
 	jsCode := fmt.Sprintf(`(() => {
 		var cards = document.querySelectorAll('button[aria-description]');
 		var card = null;
@@ -364,15 +374,20 @@ func (c *Client) ClickMoreButtonOnFirstInfographicCard() error {
 			ancestor = ancestor.parentElement;
 		}
 		return 'NOT_FOUND';
-	})()`, infographicCardDescription, moreButtonDescription)
+	})()`, cardDescription, moreButtonDescription)
 	result, err := c.executeJS(jsCode, defaultTimeout)
 	if err != nil {
 		return err
 	}
 	if result != "CLICKED" {
-		return &BrowserError{Message: fmt.Sprintf("インフォグラフィックの「もっと見る」ボタンが見つかりませんでした (result=%s)", result)}
+		return &BrowserError{Message: fmt.Sprintf("「もっと見る」ボタンが見つかりませんでした: description='%s' (result=%s)", cardDescription, result)}
 	}
 	return nil
+}
+
+// ClickMoreButtonOnFirstInfographicCard は最初のインフォグラフィックカードの「もっと見る」をクリックする
+func (c *Client) ClickMoreButtonOnFirstInfographicCard() error {
+	return c.ClickMoreButtonOnCard(infographicCardDescription)
 }
 
 // CloseSourceViewerIfOpen はソースビューアが開いている場合に閉じる（冪等）
