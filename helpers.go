@@ -47,14 +47,34 @@ func FindDownloadedInfographic(downloadsDir string, startTime time.Time, minSize
 	return candidates[len(candidates)-1].path, nil
 }
 
-// CopyToOutput はファイルを出力ディレクトリにコピーする
-func CopyToOutput(src, outputDir string) (string, error) {
+// MoveToOutput はファイルを出力ディレクトリにリネームして移動する
+// nameが空の場合は元のファイル名を使う。拡張子は元ファイルから引き継ぐ。
+func MoveToOutput(src, outputDir, name string) (string, error) {
+	absDir, err := filepath.Abs(outputDir)
+	if err != nil {
+		return "", err
+	}
+	outputDir = absDir
+
 	if err := os.MkdirAll(outputDir, 0755); err != nil {
 		return "", err
 	}
 
-	dest := filepath.Join(outputDir, filepath.Base(src))
+	ext := filepath.Ext(src)
+	var destName string
+	if name != "" {
+		destName = name + ext
+	} else {
+		destName = filepath.Base(src)
+	}
+	dest := filepath.Join(outputDir, destName)
 
+	// まずos.Renameを試みる（同一デバイスなら高速）
+	if err := os.Rename(src, dest); err == nil {
+		return dest, nil
+	}
+
+	// クロスデバイスの場合はコピー+削除
 	srcFile, err := os.Open(src)
 	if err != nil {
 		return "", err
@@ -70,6 +90,8 @@ func CopyToOutput(src, outputDir string) (string, error) {
 	if _, err := io.Copy(destFile, srcFile); err != nil {
 		return "", err
 	}
+
+	_ = os.Remove(src)
 
 	return dest, nil
 }
