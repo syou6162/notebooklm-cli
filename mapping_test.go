@@ -188,6 +188,38 @@ func TestMappingStore_UpdateDownload(t *testing.T) {
 	}
 }
 
+func TestMappingStore_LookupByURL_Found(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
+
+	url := "https://notebooklm.google.com/notebook/lookup-test"
+	hash := ComputeSHA256("lookup by url test")
+	if err := store.SaveMapping(hash, url, "lookup by url test"); err != nil {
+		t.Fatal(err)
+	}
+
+	entry, gotHash, found := store.LookupByURL(url)
+	if !found {
+		t.Fatal("expected found")
+	}
+	if gotHash != hash {
+		t.Errorf("hash = %q, want %q", gotHash, hash)
+	}
+	if entry.URL != url {
+		t.Errorf("entry.URL = %q, want %q", entry.URL, url)
+	}
+}
+
+func TestMappingStore_LookupByURL_NotFound(t *testing.T) {
+	tmpDir := t.TempDir()
+	store := NewMappingStore(filepath.Join(tmpDir, "mapping.yaml"))
+
+	_, _, found := store.LookupByURL("https://notebooklm.google.com/notebook/nonexistent")
+	if found {
+		t.Error("expected not found")
+	}
+}
+
 func TestGenerateDefaultTitle(t *testing.T) {
 	title := GenerateDefaultTitle("AIの最新動向について解説します。これは長いテキストなので30文字で切られるはずです。")
 	if len([]rune(title)) > 40 { // 30文字 + _YYYYMMDD(9文字)
