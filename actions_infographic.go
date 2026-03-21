@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -41,12 +39,7 @@ func downloadInfographicAction(xdg *XDGPaths, notebookURL, outputFlag string) er
 	}
 
 	mapping := NewMappingStore(xdg.MappingFile())
-
 	entry, hash, found := mapping.LookupByURL(notebookURL)
-	var title string
-	if found {
-		title = entry.Title
-	}
 
 	client := NewClient(1)
 	service := NewService(client, notebookURL, mapping, nil)
@@ -55,34 +48,16 @@ func downloadInfographicAction(xdg *XDGPaths, notebookURL, outputFlag string) er
 		return err
 	}
 
-	homeDir, _ := os.UserHomeDir()
-	downloadsDir := filepath.Join(homeDir, "Downloads")
-	startTime := time.Now().Add(-30 * time.Second)
-
-	var downloaded string
-	deadline := time.Now().Add(60 * time.Second)
-	for time.Now().Before(deadline) {
-		f, err := FindDownloadedInfographic(downloadsDir, startTime, 1_000_000)
-		if err == nil {
-			downloaded = f
-			break
-		}
-		time.Sleep(3 * time.Second)
-	}
-
-	if downloaded == "" {
-		return fmt.Errorf("ダウンロードがタイムアウトしました: %s/unnamed*.png", downloadsDir)
-	}
-
-	dest, err := MoveToOutput(downloaded, outputDir, title)
-	if err != nil {
-		return fmt.Errorf("ファイルの移動に失敗しました: %w", err)
-	}
-
+	var e *MappingEntry
+	var h string
 	if found {
-		if err := mapping.UpdateDownload(hash, "infographic", dest); err != nil {
-			fmt.Printf("マッピングの更新に失敗しました: %v\n", err)
-		}
+		e = entry
+		h = hash
+	}
+
+	dest, err := downloadAndMove(mapping, h, e, outputDir, "infographic", FindDownloadedInfographic, 60*time.Second)
+	if err != nil {
+		return err
 	}
 
 	fmt.Println(dest)
