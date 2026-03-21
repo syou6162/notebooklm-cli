@@ -83,6 +83,11 @@ func downloadAudioAction(xdg *XDGPaths, notebookURL, outputFlag string) error {
 		if err := mapping.UpdateDownload(hash, "audio", dest); err != nil {
 			fmt.Printf("マッピングの更新に失敗しました: %v\n", err)
 		}
+		if entry.Description != "" {
+			if err := SetFinderComment(dest, entry.Description); err != nil {
+				fmt.Printf("Finderコメントの設定に失敗しました: %v\n", err)
+			}
+		}
 	}
 
 	fmt.Println(dest)

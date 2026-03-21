@@ -182,6 +182,12 @@ func batchAudioAction(xdg *XDGPaths, reader io.Reader, outputFlag string) error 
 		fmt.Printf("マッピングの更新に失敗しました: %v\n", err)
 	}
 
+	if entry.Description != "" {
+		if err := SetFinderComment(dest, entry.Description); err != nil {
+			fmt.Printf("Finderコメントの設定に失敗しました: %v\n", err)
+		}
+	}
+
 	fmt.Println(dest)
 	return nil
 }
