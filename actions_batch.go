@@ -3,8 +3,6 @@ package main
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 	"time"
 )
 
@@ -66,31 +64,9 @@ func batchInfographicAction(xdg *XDGPaths, reader io.Reader, outputFlag string) 
 		return err
 	}
 
-	homeDir, _ := os.UserHomeDir()
-	downloadsDir := filepath.Join(homeDir, "Downloads")
-	startTime := time.Now().Add(-30 * time.Second)
-
-	var downloaded string
-	deadline := time.Now().Add(60 * time.Second)
-	for time.Now().Before(deadline) {
-		f, err := FindDownloadedInfographic(downloadsDir, startTime, 1_000_000)
-		if err == nil {
-			downloaded = f
-			break
-		}
-		time.Sleep(3 * time.Second)
-	}
-	if downloaded == "" {
-		return fmt.Errorf("ダウンロードがタイムアウトしました")
-	}
-
-	dest, err := MoveToOutput(downloaded, outputDir, entry.Title)
+	dest, err := downloadAndMove(mapping, hash, entry, outputDir, "infographic", FindDownloadedInfographic, 60*time.Second)
 	if err != nil {
-		return fmt.Errorf("ファイルの移動に失敗しました: %w", err)
-	}
-
-	if err := mapping.UpdateDownload(hash, "infographic", dest); err != nil {
-		fmt.Printf("マッピングの更新に失敗しました: %v\n", err)
+		return err
 	}
 
 	fmt.Println(dest)
@@ -155,31 +131,9 @@ func batchAudioAction(xdg *XDGPaths, reader io.Reader, outputFlag string) error 
 		return err
 	}
 
-	homeDir, _ := os.UserHomeDir()
-	downloadsDir := filepath.Join(homeDir, "Downloads")
-	startTime := time.Now().Add(-30 * time.Second)
-
-	var downloaded string
-	deadline := time.Now().Add(120 * time.Second)
-	for time.Now().Before(deadline) {
-		f, err := FindDownloadedAudio(downloadsDir, startTime, 1_000_000)
-		if err == nil {
-			downloaded = f
-			break
-		}
-		time.Sleep(3 * time.Second)
-	}
-	if downloaded == "" {
-		return fmt.Errorf("ダウンロードがタイムアウトしました")
-	}
-
-	dest, err := MoveToOutput(downloaded, outputDir, entry.Title)
+	dest, err := downloadAndMove(mapping, hash, entry, outputDir, "audio", FindDownloadedAudio, 120*time.Second)
 	if err != nil {
-		return fmt.Errorf("ファイルの移動に失敗しました: %w", err)
-	}
-
-	if err := mapping.UpdateDownload(hash, "audio", dest); err != nil {
-		fmt.Printf("マッピングの更新に失敗しました: %v\n", err)
+		return err
 	}
 
 	fmt.Println(dest)
